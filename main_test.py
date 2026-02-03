@@ -23,21 +23,19 @@ if __name__ == '__main__':
     batch_size  = 512
     prefetch_factor = 5
     model_id    = 14
-    approximation_order = 3
-    data_path   = './preproc_data_no_w'
-    model_path  = './saved_models'
-    derivative  = 'x'
+    approximation_order = 2                     # Order of moments to check
+    data_path   = './preproc_data_no_w'         # path of preprocessed data
+    model_path  = './saved_models'              # model relative path to load (only useful if full_path is empty string)
+    derivative  = 'x'                           # which differential operator NEMDO is approximating
     model_path  = jn(model_path, derivative)
-    full_path   = 'saved_models/x/attrs50.pth'
-    data_iteration = 3
-    data_augmentation = False
+    full_path   = ''                            # full path of model to load
+    data_iteration = 3                          # data size to use for testing
 
-    plot = True
+    plot = True                                 # plots predicted weight stencils on top of each other
     save_results = False
 
     model, _  = load_gnn(model_path=model_path,
                          model_id=model_id,
-                         model_class='sa_gnn',
                          full_path=full_path)
 
     logger.info('Loading data')

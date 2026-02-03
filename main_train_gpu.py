@@ -12,7 +12,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau, LinearLR
 from functions.Plots import plot_training_pytorch
 from functions.gnn_preproc import load
 from functions.labfm_moments import calc_moments_torch, monomial_power
-from models.Small_models import SmallGNN
+from models.NEMDO_mod import NEMDO
 from scipy.special import factorial
 from torch_geometric.nn.aggr import SumAggregation
 import torch._dynamo
@@ -126,15 +126,7 @@ def train_model(model_id: int,
         embedding_size = attrs['embedding_size']
         lr = attrs['lr']
 
-        # select architecture that is resuming
-        #model = AMessagePassingGNN(embedding_size=embedding_size,
-        #                          layers=layers)
-        # still need to implement number of kernels when resuming training
-        #model = SNAMessagePassingGNN(input_size=input_size,
-        #                             embedding_size=embedding_size,
-        #                            layers=layers,
-        #                             output_size=output_size).to(device)
-        model = SmallGNN(input_size=input_size,
+        model = NEMDO(input_size=input_size,
                          output_size=1,
                          embedding_size=embedding_size,
                         layers=layers).to(device)
@@ -160,18 +152,7 @@ def train_model(model_id: int,
         model_id      = attrs['model_id']
 
     else:
-        # chose architecture of model
-        #model = MessagePassingGNN(input_size=input_size,
-        #                            embedding_size=embedding_size,
-        #                            layers=layers).to(rank) # adjust model
-        #model = AMessagePassingGNN(input_size=input_size,
-        #                            embedding_size=embedding_size,
-        #                            layers=layers).to(device)
-        #model = SNAMessagePassingGNN(input_size=input_size,
-        #                             output_size=1,
-        #                             embedding_size=embedding_size,
-        #                            layers=layers).to(device)
-        model = SmallGNN(input_size=input_size,
+        model = NEMDO(input_size=input_size,
                          output_size=1,
                          embedding_size=embedding_size,
                         layers=layers).to(device)
@@ -237,7 +218,7 @@ def train_model(model_id: int,
 
             for num_batches, batch in enumerate(train_loader):
 
-                batch = batch.to(device, non_blocking=True) # evaluate where stream synchronisation must happen now
+                batch = batch.to(device, non_blocking=True)
 
                 optimizer.zero_grad()
 
@@ -356,14 +337,14 @@ def train_model(model_id: int,
 
 if __name__=='__main__':
     # to isolate the host and the cores used for dataloader run the code with
-    # numactl -C 4-7 --localalloc python3 main_train_gpu.py
+    # numactl -C 4-7 --localalloc python3 main_train.py
     cpu_cores   = 4                                        # number of cpu cores to load data for gpu
     batch_size  = 128                                      #
     prefetch_factor = 10                                    # number of batches for cpu to prefetch
     model_id    = 67                                      # id of the model to save
     epochs      = 1000                                      # total of number of epochs to run
     lr          = 1e-3                                   # initial learning rate
-    input_size  = 2                                        # 2 dimensional input
+    input_size  = 2                                        # 2 dimensional input (x and y)
     layers      = 2                                        # num of gnn layers
     embedding_size = 64                                    # embedding size
     data_iteration = 4                                     # which data iteration to use
@@ -377,7 +358,7 @@ if __name__=='__main__':
     root_dir_graphs    = 'graphs'                          # root dir for graphs to be saved
     base_path          = 'preproc_data'                    # root dir to get imported preproc data
 
-    train = False                                         # set train=False and plot=True to only visualise training loss
+    train = True                                         # set train=False and plot=True to only visualise training loss
     plot  = True                                          # plots training-validation curve when finished training
 
     f_path = jn(base_path, f'iter{data_iteration}')
@@ -437,4 +418,3 @@ if __name__=='__main__':
             f"Model ID: {attrs['model_id']}"
         )
 
-        # write and call training plot function

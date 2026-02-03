@@ -1,17 +1,11 @@
 import torch
 from collections import OrderedDict
 from torch.optim import Adam
-from models.NN_Base import NN_Topology
-from models.Transformer import Transformer_Topology
 from torch.nn.modules.utils import consume_prefix_in_state_dict_if_present
 import os
 import pickle as pk
 import logging
-from models.MessageGNN import MessagePassingGNN
-from models.AttentionGNN import AMessagePassingGNN
-#from models.SNA_GNN import SNAMessagePassingGNN
-from models.m36 import SNAMessagePassingGNN
-from models.csf_models import csf_gnn
+from models.NEMDO_mod import NEMDO
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -20,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 def load_gnn(model_path=None,
              model_id=None,
-             model_class='gnn',
+             model_class='nemdo',
              full_path=None):
 
     if full_path:
@@ -31,25 +25,15 @@ def load_gnn(model_path=None,
                        map_location='cpu',
                        weights_only=False)
 
-    if model_class.lower() not in ['gnn', 'a_gnn', 'sa_gnn','csf']:
-        raise ValueError("model_class must be 'gnn', 'sa_gnn', or 'a_gnn' ")
+    if model_class.lower() not in ['nemdo']:
+        raise ValueError("model_class must be 'nemdo' ")
 
     layers = attrs['layers']
     embedding_size = attrs['embedding_size']
 
     if model_class.lower() == 'gnn':
-        model_instance = MessagePassingGNN(embedding_size=embedding_size,
+        model_instance = NEMDO(embedding_size=embedding_size,
                                            layers=layers)
-    elif model_class.lower() == 'a_gnn':
-        model_instance = AMessagePassingGNN(embedding_size=embedding_size,
-                                           layers=layers)
-    elif model_class.lower() == 'sa_gnn':
-        model_instance = SNAMessagePassingGNN(embedding_size=embedding_size,
-                                           layers=layers)
-    elif model_class.lower() == 'csf':
-        model_instance = csf_gnn(embedding_size=embedding_size,
-                                              layers=layers)
-
 
     weight_dict = OrderedDict()
     weight_dict.update(

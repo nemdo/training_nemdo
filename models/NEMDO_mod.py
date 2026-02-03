@@ -1,11 +1,9 @@
-from typing import Optional
 import torch
 from torch import nn, Tensor
-from torch_geometric.nn import MessagePassing, GraphNorm
-from torch.nn import LayerNorm
-from torch_geometric.nn.aggr import SumAggregation, AttentionalAggregation
+from torch_geometric.nn import MessagePassing
+from torch_geometric.nn.aggr import AttentionalAggregation
 import logging
-import copy
+
 
 logger = logging.getLogger(__name__)
 
@@ -24,14 +22,12 @@ def reset_params(layers, activation: str):
 class GraphLayer(MessagePassing):
     def __init__(self, embedding_size): # Verify along which axis to propagate
         super().__init__(aggr=None)
-        #self.dropout = nn.Dropout(0.2)
 
         self.attention_mlp = nn.Sequential(
                 nn.Linear(embedding_size, embedding_size),
                 nn.Tanh(),
-
         )
-        reset_params(self.attention_mlp, 'tanh')
+        #reset_params(self.attention_mlp, 'tanh')
 
         self.attention_aggr = AttentionalAggregation(nn.Sequential(
             nn.Linear(embedding_size, embedding_size)),
@@ -53,11 +49,6 @@ class GraphLayer(MessagePassing):
         )
         reset_params(self.mlp_upd, 'tanh')
 
-        #self.node_norm = LayerNorm(embedding_size)
-
-        #self.aggr_m = SumAggregation()
-
-        #self.norm = GraphNorm(out_channels)
 
 
     def forward(self,
@@ -116,7 +107,7 @@ class GraphLayer(MessagePassing):
         return node_feature_out#, edge_upd
 
 
-class SNAMessagePassingGNN(nn.Module):
+class NEMDO(nn.Module):
     def __init__(self,
                  embedding_size: int,
                  layers: int,
@@ -129,49 +120,36 @@ class SNAMessagePassingGNN(nn.Module):
         self.node_encoder  = nn.Sequential(
             nn.Linear(input_size, embedding_size//2),
             nn.Tanh(),
-            nn.Linear(embedding_size//2, embedding_size),
-            nn.Tanh()
         )
         reset_params(self.node_encoder, 'tanh')
 
-        #self.edge_encoder = nn.Sequential(
-        #    nn.Linear(input_size, embedding_size),
-        #    nn.Tanh()
-        #)
-        #reset_params(self.edge_encoder, 'tanh')
 
         graph_layers = []
         for _ in range(layers):
-            graph_layers.append(GraphLayer(embedding_size))
+            graph_layers.append(GraphLayer(embedding_size//2))
 
         self.graph_layers = nn.ModuleList(graph_layers)
 
-        self.decoder1 = nn.Sequential(
-            nn.Linear(embedding_size, embedding_size // 2),
+        self.decoder = nn.Sequential(
+            nn.Linear(embedding_size//2, embedding_size),
             nn.Tanh(),
-            nn.Linear(embedding_size // 2, embedding_size // 4),
-            nn.Tanh(),
+            nn.Sequential(nn.Linear(embedding_size, output_size))
         )
-        reset_params(self.decoder1, 'tanh')
-
-        self.decoder2 = nn.Sequential(nn.Linear(embedding_size // 4,  output_size))
+        reset_params(self.decoder, 'tanh')
 
     def forward(self,
                 node_feature: Tensor,
                 edge_index: Tensor,
                 batch: Tensor):
 
-        #emb_edge_feature = self.edge_encoder(edge_feature)
 
         emb_node_feature = self.node_encoder(node_feature)
 
-        # do embedding for edge attributes
         for layer in self.graph_layers:
-            # edge embeddings and node embeddings are updated
             emb_node_feature = layer(emb_node_feature, edge_index, batch)
 
 
-        out = self.decoder1(emb_node_feature)
-        out = self.decoder2(out)
+        out = self.decoder(emb_node_feature)
+
 
         return out
